@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from ipxact_graph import (
     ArtifactNode, DependencyEdge, NodeType, EdgeType, Domain,
     MappingCategory, GraphManager, ChangeDetector,
-    MappingValidator, MermaidGenerator, ExcelReportGenerator,
+    MappingValidator, EdgeCaseAuditor, MermaidGenerator, ExcelReportGenerator,
 )
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s | %(message)s")
@@ -626,14 +626,24 @@ def main() -> None:
     val_report.print_report()
     val_report.save(OUTPUT_DIR / "validation_report.json")
 
-    # Step 4: Change detection
-    print("[4/7] Building hash baseline...")
+    # Step 4: Edge Case Audit (THE EXTENDED CHECKS)
+    print("\n[4/8] Running edge case audit...")
+    auditor = EdgeCaseAuditor(gm)
+    edge_report = auditor.full_audit(
+        scan_directories=[SAMPLE_DIR],
+        check_file_content=True,
+    )
+    edge_report.print_report()
+    edge_report.save(OUTPUT_DIR / "edge_case_report.json")
+
+    # Step 5: Change detection
+    print("[5/8] Building hash baseline...")
     detector = ChangeDetector(gm)
     detector.build_baseline()
     detector.save_baseline(OUTPUT_DIR / "hash_baseline.json")
 
     # Simulate a change
-    print("[5/7] Simulating SDC clock change (10ns → 8ns)...")
+    print("[6/8] Simulating SDC clock change (10ns → 8ns)...")
     sdc_file = SAMPLE_DIR / "aes_gcm_constraints.sdc"
     original = sdc_file.read_text()
     sdc_file.write_text(original.replace("period 10.0", "period 8.0"))
@@ -646,7 +656,7 @@ def main() -> None:
     sdc_file.write_text(original)  # restore
 
     # Step 6: Mermaid diagrams
-    print("\n[6/7] Generating Mermaid diagrams...")
+    print("\n[7/8] Generating Mermaid diagrams...")
     mermaid = MermaidGenerator(gm)
     mermaid.save(OUTPUT_DIR / "full_graph.mermaid",
                  title="IP-XACT Complete Dependency Graph")
@@ -656,7 +666,7 @@ def main() -> None:
     print("       Saved: full_graph.mermaid, impact_graph.mermaid")
 
     # Step 7: Excel report
-    print("[7/7] Generating Excel report...")
+    print("[8/8] Generating Excel report...")
     excel = ExcelReportGenerator(gm)
     excel.generate(OUTPUT_DIR / "dependency_report.xlsx", change_report=report)
     print("       Saved: dependency_report.xlsx")
@@ -669,7 +679,8 @@ def main() -> None:
     print("=" * 72)
     print(f"""
 OUTPUTS in {OUTPUT_DIR}/:
-  • validation_report.json  ← KEY: Shows all missing/incomplete mappings
+  • validation_report.json  ← Mapping completeness audit
+  • edge_case_report.json   ← Extended edge case audit (drift, orphans, semantics)
   • dependency_graph.json   ← Serialised graph
   • full_graph.mermaid      ← Full dependency diagram
   • impact_graph.mermaid    ← Change impact visualisation
