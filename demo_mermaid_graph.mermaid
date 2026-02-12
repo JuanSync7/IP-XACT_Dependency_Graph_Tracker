@@ -1,0 +1,114 @@
+---
+title: IP-XACT Complete Dependency Graph
+---
+graph TB
+
+    subgraph dft["Dft"]
+        direction TB
+        sdc_dft{{"DFT SDC (synopsys_dft)"}}
+    end
+
+    subgraph firmware["Firmware"]
+        direction TB
+        c_header[("C Register Header")]
+    end
+
+    subgraph fpga_translation["Fpga Translation"]
+        direction TB
+        fpga_src(["Customer AES-GCM FPGA"])
+    end
+
+    subgraph frontend_design["Frontend Design"]
+        direction TB
+        dc_script>"DC Compile Script (synopsys_dc)"]
+        filelist["RTL Filelist"]
+        reset_sch{{"Reset Scheme"}}
+        rtl_wrap["RTL Wrapper"]
+        sdc_main{{"Main SDC (synopsys_dc)"}}
+        upf{{"UPF Power Intent (synopsys_dc)"}}
+    end
+
+    subgraph global["Global"]
+        direction TB
+        config(["Design Parameters"])
+        doc_spec("Interface Spec")
+        ipxact_comp[["AES-GCM IP-XACT Component (ip-xact)"]]
+        ipxact_design[["SoC Design (IP-XACT) (ip-xact)"]]
+        mem_map[("Memory Map")]
+        reg_map[("Register Map")]
+    end
+
+    subgraph physical_design["Physical Design"]
+        direction TB
+        floorplan>"Floorplan Constraints (synopsys_icc2)"]
+        pin_map>"Pin Mapping"]
+    end
+
+    subgraph verification["Verification"]
+        direction TB
+        bus_vip("AXI VIP Config (synopsys_vip)")
+        cdc{{"CDC Constraints (spyglass_cdc)"}}
+        uvm_ral[("UVM RAL Model")]
+    end
+
+    config -.->|Params configure IP-XACT| ipxact_comp
+    fpga_src ==>|Customer FPGA → IP-XACT translation| ipxact_comp
+    ipxact_comp -->|Generates VIP config| bus_vip
+    ipxact_comp -->|Generates CDC constraints| cdc
+    ipxact_comp -->|Generates interface spec| doc_spec
+    ipxact_comp -->|Generates RTL filelist| filelist
+    ipxact_comp -->|Generates memory map| mem_map
+    ipxact_comp -->|Generates pin mapping| pin_map
+    ipxact_comp -->|Generates register map| reg_map
+    ipxact_comp -->|Generates reset scheme| reset_sch
+    ipxact_comp -->|Generates RTL wrapper| rtl_wrap
+    ipxact_comp -->|Generates timing constraints| sdc_main
+    ipxact_comp -->|Generates power intent| upf
+    ipxact_comp -->|Component used in design| ipxact_design
+    ipxact_design -->|Generates floorplan constraints| floorplan
+    reg_map -->|Generates C header| c_header
+    reg_map -->|Generates UVM RAL model| uvm_ral
+    rtl_wrap -.->|RTL read by DC| dc_script
+    sdc_main -.->|SDC sourced by DC| dc_script
+    sdc_main -.->|DFT must match main clocks| sdc_dft
+    upf -.->|UPF applied in synthesis| dc_script
+
+    %% Styling
+    classDef cls_ipxact_component fill:#4A90D9,stroke:#333,color:#fff
+    class ipxact_comp cls_ipxact_component
+    classDef cls_ipxact_design fill:#357ABD,stroke:#333,color:#fff
+    class ipxact_design cls_ipxact_design
+    classDef cls_sdc_constraint fill:#E67E22,stroke:#333,color:#fff
+    class sdc_main,sdc_dft cls_sdc_constraint
+    classDef cls_upf_power fill:#8E44AD,stroke:#333,color:#fff
+    class upf cls_upf_power
+    classDef cls_cdc_constraint fill:#AF7AC5,stroke:#333,color:#fff
+    class cdc cls_cdc_constraint
+    classDef cls_reset_scheme fill:#BB8FCE,stroke:#333,color:#fff
+    class reset_sch cls_reset_scheme
+    classDef cls_fpga_source fill:#16A085,stroke:#333,color:#fff
+    class fpga_src cls_fpga_source
+    classDef cls_rtl_wrapper fill:#2ECC71,stroke:#333,color:#fff
+    class rtl_wrap cls_rtl_wrapper
+    classDef cls_rtl_filelist fill:#82E0AA,stroke:#333,color:#fff
+    class filelist cls_rtl_filelist
+    classDef cls_register_map fill:#D4AC0D,stroke:#333,color:#fff
+    class reg_map cls_register_map
+    classDef cls_uvm_ral_model fill:#F4D03F,stroke:#333,color:#fff
+    class uvm_ral cls_uvm_ral_model
+    classDef cls_c_header fill:#F9E79F,stroke:#333,color:#fff
+    class c_header cls_c_header
+    classDef cls_memory_map fill:#D5B60A,stroke:#333,color:#fff
+    class mem_map cls_memory_map
+    classDef cls_bus_vip_config fill:#1ABC9C,stroke:#333,color:#fff
+    class bus_vip cls_bus_vip_config
+    classDef cls_pin_mapping fill:#EC7063,stroke:#333,color:#fff
+    class pin_map cls_pin_mapping
+    classDef cls_floorplan_constraint fill:#E74C3C,stroke:#333,color:#fff
+    class floorplan cls_floorplan_constraint
+    classDef cls_eda_script fill:#C0392B,stroke:#333,color:#fff
+    class dc_script cls_eda_script
+    classDef cls_config_param fill:#F39C12,stroke:#333,color:#fff
+    class config cls_config_param
+    classDef cls_documentation fill:#7F8C8D,stroke:#333,color:#fff
+    class doc_spec cls_documentation
